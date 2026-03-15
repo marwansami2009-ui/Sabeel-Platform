@@ -14,46 +14,46 @@ export const Login = () => {
   const { signUp, signIn } = useAuth();
 
   const handleAuth = async (e) => {
-    e.preventDefault();
+    // أهم سطر في المجرة، لازم يكون أول سطر
+    if (e) e.preventDefault(); 
+    
     setLoading(true);
     setError('');
     setSuccessMessage('');
     
-    // Clean up phone number from any spaces
-    const cleanPhone = phone.trim().replace(/\s/g, '');
-    const dummyEmail = `${cleanPhone}@sabeel.com`;
-
     try {
+      // تنظيف الرقم من أي مسافات أو بلاوي
+      const cleanPhone = phone.trim().replace(/\s/g, '');
+      const dummyEmail = `${cleanPhone}@sabeel.com`;
+      
+      console.log("البيانات اللي بتتبعت:", dummyEmail);
+  
       let result;
       if (isSignUp) {
-        result = await signUp(cleanPhone, password, { 
-            name: '', 
-            phone: cleanPhone 
-        });
+        // لاحظ بنبعت cleanPhone مش dummyEmail عشان دالة signUp بتعمله لوحدها
+        result = await signUp(cleanPhone, password, { name: '', phone: cleanPhone });
       } else {
         result = await signIn(cleanPhone, password);
       }
-
-      if (result.success) {
-        if(isSignUp) {
-            setSuccessMessage('تم إنشاء حسابك بنجاح! حسابك قيد المراجعة الرجاء انتظار التفعيل.');
-            setTimeout(() => {
-                setSuccessMessage('');
-                setIsSignUp(false);
-                setPhone('');
-                setPassword('');
-            }, 5000);
-        } else {
-            // Success Sign in
-            window.location.href = '/'; 
+  
+      if (result && result.success) {
+        alert("مبروك! سجلت بنجاح.");
+        // لو طالب جديد اظهرله رسالة الانتظار
+        if (isSignUp) {
+           alert("حسابك قيد المراجعة، الإدارة هتفعل دخورك قريب.");
         }
+        window.location.href = '/dashboard'; 
       } else {
-         setError(result.error || 'حدث خطأ، يرجى المحاولة مرة أخرى.');
+        // لو سوبابيز رجع غلط، هيظهر هنا مش هيعمل ريستارت
+        alert("سوبابيز بيقولك: " + (result?.error || "خطأ غير معروف"));
+        setError(result?.error || "خطأ غير معروف");
       }
     } catch (err) {
-      setError(err.message || 'حدث خطأ غير متوقع.');
+      // لو الكود نفسه فيه غلطة، الـ alert ده هيمسكها
+      alert("غلطة في الكود: " + err.message);
+      setError(err.message);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
