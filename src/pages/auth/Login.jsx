@@ -12,7 +12,7 @@ export const Login = () => {
     e.preventDefault(); // ده عشان يمنع الريسترت
     setLoading(true);
     
-    const dummyEmail = `${phone}@sabeel.com`;
+    const dummyEmail = `${phone.trim()}@sabeel.com`;
     console.log("Attempting auth with:", dummyEmail);
 
     try {
