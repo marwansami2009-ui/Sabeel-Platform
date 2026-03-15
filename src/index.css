@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+@import 'plyr/dist/plyr.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #171717;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --grid-color: rgba(255, 255, 255, 0.04);
+  --glow-color: rgba(228, 228, 231, 0.12);
+  --plyr-color-main: #8b0000;
+  --plyr-control-toggle-checked-background: #d4af37;
+}
+
+.light-mode {
+  --bg-primary: #fafafa;
+  --bg-secondary: #f4f4f5;
+  --text-primary: #0a0a0a;
+  --text-secondary: #52525b;
+  --grid-color: rgba(0, 0, 0, 0.06);
+  --glow-color: rgba(161, 161, 170, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Cairo', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  margin: 0;
+  transition: all 0.3s ease;
+}
+
+.glass-panel {
+  background: rgba(23, 23, 23, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  border-radius: 16px;
+}
+
+.light-mode .glass-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+}
+
+.glass-icon {
+  background: linear-gradient(135deg, rgba(161, 161, 170, 0.25) 0%, rgba(82, 82, 91, 0.15) 100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(228, 228, 231, 0.3);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 0 20px rgba(161, 161, 170, 0.2);
+  transition: all 0.3s ease;
+}
+
+.btn-main {
+  background: linear-gradient(135deg, #e4e4e7 0%, #a1a1aa 100%);
+  color: #0a0a0a;
+  font-weight: 800;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(228, 228, 231, 0.25);
+}
+
+.math-grid {
+  background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
