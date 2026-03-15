@@ -53,7 +53,8 @@ export const AuthProvider = ({ children }) => {
   const signUp = async (phone, password, userData) => {
     try {
       setLoading(true);
-      const dummyEmail = `${phone}@sabeel.com`;
+      const cleanPhone = phone.trim().replace(/\s/g, '');
+      const dummyEmail = `${cleanPhone}@sabeel.com`;
       
       // 1. Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -62,7 +63,7 @@ export const AuthProvider = ({ children }) => {
         options: {
           data: {
             name: userData.name,
-            phone: phone
+            phone: cleanPhone
           }
         }
       });
@@ -75,7 +76,7 @@ export const AuthProvider = ({ children }) => {
           id: authData.user.id,
           email: dummyEmail,
           name: userData.name,
-          phone: phone,
+          phone: cleanPhone,
           grade: userData.grade,
           role: 'student',
           status: 'pending',
@@ -102,7 +103,8 @@ export const AuthProvider = ({ children }) => {
   const signIn = async (phone, password) => {
     try {
       setLoading(true);
-      const dummyEmail = `${phone}@sabeel.com`;
+      const cleanPhone = phone.trim().replace(/\s/g, '');
+      const dummyEmail = `${cleanPhone}@sabeel.com`;
       const { data, error } = await supabase.auth.signInWithPassword({
         email: dummyEmail,
         password
