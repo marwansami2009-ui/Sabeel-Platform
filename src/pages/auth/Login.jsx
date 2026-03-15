@@ -15,16 +15,6 @@ export const Login = ({ onToggleMode }) => {
 
   const { signUp, signIn, resetPassword } = useAuth();
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError('');
-    const result = await signInWithGoogle();
-    if (!result.success) {
-      setError(result.error);
-    }
-    setLoading(false);
-  };
-
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     setLoading(true);

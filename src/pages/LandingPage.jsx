@@ -11,7 +11,7 @@ export const LandingPage = () => {
   const [topStudents, setTopStudents] = useState([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showHelpMessage, setShowHelpMessage] = useState(false);
-  const { user, signInWithGoogle } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     // Load courses
@@ -222,7 +222,7 @@ export const LandingPage = () => {
         <div className="flex-1 relative">
           <div className="absolute inset-0 bg-gradient-to-r from-brand-red/30 to-brand-gold/30 blur-[80px] rounded-full"></div>
           <img
-            src="https://via.placeholder.com/400x400?text=Teacher" alt="أستاذ محمد حامد"
+            src="https://via.placeholder.com/400x400?text=Teacher"
             alt="أستاذ محمد حامد"
             className="relative z-10 w-full max-w-md mx-auto animate-float drop-shadow-2xl"
             onError={(e) => {
@@ -445,22 +445,14 @@ export const LandingPage = () => {
 
             <div className="space-y-4">
               <button
-                onClick={signInWithGoogle}
-                className="w-full bg-white text-black p-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:scale-[1.02] transition"
-              >
-                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-6 h-6" alt="Google" />
-                تسجيل الدخول بـ Google
-              </button>
-
-              <button
                 onClick={() => {
                   setShowLoginModal(false);
                   window.location.href = '/login';
                 }}
-                className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-white/10 transition"
+                className="w-full bg-brand-primary text-white p-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-brand-primary/90 transition"
               >
-                <GlassIcon name="mail" size={20} />
-                تسجيل الدخول بـ الإيميل
+                <GlassIcon name="log-in" size={20} />
+                الانتقال لتسجيل الدخول
               </button>
             </div>
           </div>
