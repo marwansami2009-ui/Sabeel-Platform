@@ -12,7 +12,9 @@ import {
   createLecture,
   deleteLecture,
   getPaymentRequests,
-  getProfiles
+  getProfiles,
+  getPendingStudents,
+  updateProfileStatus
 } from '../../services/supabaseService';
 
 export const AdminDashboard = () => {
@@ -23,6 +25,7 @@ export const AdminDashboard = () => {
   const [courses, setCourses] = useState([]);
   const [lectures, setLectures] = useState([]);
   const [students, setStudents] = useState([]);
+  const [pendingStudents, setPendingStudents] = useState([]);
   const [paymentRequests, setPaymentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -81,6 +84,12 @@ export const AdminDashboard = () => {
     const studentsResult = await getProfiles('student');
     if (studentsResult.success) {
       setStudents(studentsResult.data);
+    }
+    
+    // Load pending students
+    const pendingResult = await getPendingStudents();
+    if(pendingResult.success) {
+        setPendingStudents(pendingResult.data);
     }
 
     setLoading(false);
@@ -170,6 +179,18 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleStudentApproval = async (studentId, status) => {
+    let confirmMsg = status === 'active' ? 'هل أنت متأكد من قبول هذا الطالب؟' : 'هل أنت متأكد من رفض وتجميد هذا الطالب؟';
+    if(confirm(confirmMsg)) {
+        const result = await updateProfileStatus(studentId, status);
+        if(result.success) {
+            loadData();
+        } else {
+            alert('حدث خطأ: ' + result.error);
+        }
+    }
+  }
+
   const extractYouTubeId = (url) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
@@ -178,6 +199,7 @@ export const AdminDashboard = () => {
 
   const stats = {
     students: students.length,
+    pendingStudents: pendingStudents.length,
     courses: courses.length,
     lectures: lectures.length,
     pendingPayments: paymentRequests.filter(r => r.status === 'pending').length
@@ -189,7 +211,8 @@ export const AdminDashboard = () => {
     { id: 'codes', label: 'أكواد السنتر', icon: 'gift' },
     { id: 'courses', label: 'الكورسات', icon: 'book-open', count: courses.length },
     { id: 'lectures', label: 'المحاضرات', icon: 'video', count: lectures.length },
-    { id: 'students', label: 'الطلاب', icon: 'users', count: students.length }
+    { id: 'students', label: 'الطلاب النشطين', icon: 'users', count: students.length },
+    { id: 'pending-students', label: 'طلبات الانضمام', icon: 'user-plus', badge: stats.pendingStudents }
   ];
 
   if (loading) {
@@ -544,6 +567,7 @@ export const AdminDashboard = () => {
                         <th className="p-4">المحافظة</th>
                         <th className="p-4">الهاتف</th>
                         <th className="p-4">الحالة</th>
+                        <th className="p-4">إجراءات</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -573,8 +597,83 @@ export const AdminDashboard = () => {
                               نشط
                             </span>
                           </td>
+                          <td className="p-4">
+                              <button
+                                onClick={() => handleStudentApproval(student.id, 'rejected')}
+                                className="bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 rounded-lg text-sm transition"
+                              >
+                                حظر
+                              </button>
+                          </td>
                         </tr>
                       ))}
+                      {students.length === 0 && (
+                          <tr><td colSpan="6" className="p-4 text-center text-slate-400">لا يوجد طلاب نشطين حالياً</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'pending-students' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">👤 طلبات الانضمام (قيد الانتظار)</h2>
+
+              <div className="glass-panel overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right">
+                    <thead className="bg-white/5">
+                      <tr>
+                        <th className="p-4">الطالب</th>
+                        <th className="p-4">الصف</th>
+                        <th className="p-4">المحافظة</th>
+                        <th className="p-4">الهاتف</th>
+                        <th className="p-4 flex gap-2 justify-end">إجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingStudents.map((student) => (
+                        <tr key={student.id} className="border-t border-white/5 hover:bg-white/5">
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={student.avatar_url || 'https://via.placeholder.com/40'}
+                                className="w-10 h-10 rounded-full"
+                                alt={student.name}
+                              />
+                              <div>
+                                <p className="font-bold">{student.name}</p>
+                                <p className="text-xs text-slate-400">{student.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            {student.grade === '1sec' ? 'أولى ثانوي' :
+                             student.grade === '2sec' ? 'تانية ثانوي' : 'تالتة ثانوي'}
+                          </td>
+                          <td className="p-4">{student.governorate || '-'}</td>
+                          <td className="p-4">{student.phone}</td>
+                          <td className="p-4 flex justify-end gap-2">
+                             <button
+                                onClick={() => handleStudentApproval(student.id, 'active')}
+                                className="bg-green-500/20 text-green-300 hover:bg-green-500 hover:text-white px-3 py-1 rounded-lg text-sm transition flex items-center gap-1"
+                              >
+                                <GlassIcon name="check" size={14} /> قبول
+                              </button>
+                              <button
+                                onClick={() => handleStudentApproval(student.id, 'rejected')}
+                                className="bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 rounded-lg text-sm transition flex items-center gap-1"
+                              >
+                                <GlassIcon name="x" size={14} /> رفض
+                              </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {pendingStudents.length === 0 && (
+                          <tr><td colSpan="5" className="p-4 text-center text-slate-400">لا يوجد طلبات انضمام جديدة</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

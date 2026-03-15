@@ -49,6 +49,39 @@ export const updateProfile = async (userId, updates) => {
   }
 };
 
+export const updateProfileStatus = async (userId, status) => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ status })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Update profile status error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getPendingStudents = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'student')
+      .eq('status', 'pending');
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Get pending students error:', error);
+    return { success: false, data: [] };
+  }
+};
+
 // ========== COURSES ==========
 export const getCourses = async (filters = {}) => {
   try {
@@ -475,7 +508,13 @@ export const useCenterCode = async (code, userId) => {
 export const getProfiles = async (role = null) => {
   try {
     let query = supabase.from('profiles').select('*');
-    if (role) query = query.eq('role', role);
+    if (role) {
+      query = query.eq('role', role);
+      // If student, only get active ones
+      if (role === 'student') {
+        query = query.eq('status', 'active');
+      }
+    }
     const { data, error } = await query;
     if (error) throw error;
     return { success: true, data };

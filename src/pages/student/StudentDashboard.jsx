@@ -143,6 +143,40 @@ export const StudentDashboard = () => {
     { id: 'store', label: 'متجر الكورسات', icon: 'shopping-cart', count: availableCourses.length }
   ];
 
+  if (userData?.status === 'pending') {
+    return (
+      <div className={`min-h-screen flex items-center justify-center p-4 ${isDarkMode ? 'bg-brand-dark' : 'bg-slate-50'}`}>
+        <div className="glass-panel p-8 max-w-md w-full text-center animate-scale-in">
+          <div className="absolute top-4 left-4">
+            <ThemeToggle isDark={isDarkMode} onToggle={setIsDarkMode} />
+          </div>
+
+          <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <GlassIcon name="clock" size={40} className="text-yellow-500" />
+          </div>
+          
+          <h2 className={`text-2xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+            حسابك قيد التفعيل ⏳
+          </h2>
+          
+          <p className={`mb-8 leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            أهلاً بك يا بطل! تم استلام بياناتك بنجاح.
+            <br />
+            الإدارة تقوم بمراجعة حسابك حالياً، يرجى الانتظار لحين التفعيل.
+          </p>
+
+          <button
+            onClick={logout}
+            className="w-full bg-white/10 hover:bg-white/20 text-brand-red p-4 rounded-xl font-bold flex items-center justify-center gap-3 transition"
+          >
+            <GlassIcon name="log-out" size={20} />
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen flex flex-col md:flex-row ${isDarkMode ? 'bg-brand-dark text-white' : 'bg-slate-50 text-slate-900'}`}>
       {/* Sidebar */}

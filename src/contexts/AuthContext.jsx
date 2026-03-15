@@ -78,6 +78,7 @@ export const AuthProvider = ({ children }) => {
           phone: phone,
           grade: userData.grade,
           role: 'student',
+          status: 'pending',
           avatar_url: userData.avatar_url || null
         });
 
@@ -110,7 +111,14 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
 
       // Profile will be set by onAuthStateChange
-      return { success: true, user: data.user };
+      // Fetch profile to check status immediately
+      const userProfile = await getProfile(data.user.id);
+      
+      return { 
+        success: true, 
+        user: data.user,
+        profile: userProfile
+      };
     } catch (error) {
       console.error('Sign in error:', error);
       return { success: false, error: error.message };
