@@ -14,47 +14,36 @@ export const Login = () => {
   const { signUp, signIn } = useAuth();
 
   const handleAuth = async (e) => {
-    // أهم سطر في المجرة، لازم يكون أول سطر
-    if (e) e.preventDefault(); 
-    
+    if (e) e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccessMessage('');
+  
+    // تنظيف الرقم
+    const cleanPhone = phone.trim().replace(/\s/g, '');
     
+    // لو إنت كاتب admin@sabeel.com يدوي، مش هيزود حاجة
+    // لو كاتب رقم، هيزود الدومين
+    const dummyEmail = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@sabeel.com`;
+  
+    // أهم سطر: هيوريك إيه اللي رايح لسوبابيز بالظبط
+    alert("اللي هيتبعت لسوبابيز: " + dummyEmail);
+  
     try {
-      // تنظيف الرقم من أي مسافات أو بلاوي
-      const cleanPhone = phone.trim().replace(/\s/g, '');
-      const dummyEmail = `${cleanPhone}@sabeel.com`;
-      
-      console.log("البيانات اللي بتتبعت:", dummyEmail);
+      const result = isSignUp 
+        ? await signUp(dummyEmail, password, { phone: cleanPhone })
+        : await signIn(dummyEmail, password);
   
-      let result;
-      if (isSignUp) {
-        // لاحظ بنبعت cleanPhone مش dummyEmail عشان دالة signUp بتعمله لوحدها
-        result = await signUp(cleanPhone, password, { name: '', phone: cleanPhone });
+      if (result.success) {
+        alert("دخلت بنجاح!");
+        window.location.href = '/dashboard';
       } else {
-        result = await signIn(cleanPhone, password);
-      }
-  
-      if (result && result.success) {
-        alert("مبروك! سجلت بنجاح.");
-        // لو طالب جديد اظهرله رسالة الانتظار
-        if (isSignUp) {
-           alert("حسابك قيد المراجعة، الإدارة هتفعل دخورك قريب.");
-        }
-        window.location.href = '/dashboard'; 
-      } else {
-        // لو سوبابيز رجع غلط، هيظهر هنا مش هيعمل ريستارت
-        alert("سوبابيز بيقولك: " + (result?.error || "خطأ غير معروف"));
-        setError(result?.error || "خطأ غير معروف");
+        alert("سوبابيز رفض لسبب: " + result.error);
+        setError(result.error);
       }
     } catch (err) {
-      // لو الكود نفسه فيه غلطة، الـ alert ده هيمسكها
-      alert("غلطة في الكود: " + err.message);
+      alert("Error: " + err.message);
       setError(err.message);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
