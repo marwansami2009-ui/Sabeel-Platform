@@ -15,7 +15,7 @@ import {
   getProfiles,
   getPendingStudents,
   updateProfileStatus
-} from '../../services/supabaseService';
+} from '../../services/appwriteService';
 
 export const AdminDashboard = () => {
   const { user, profile, signOut } = useAuth();
@@ -211,8 +211,7 @@ export const AdminDashboard = () => {
     { id: 'codes', label: 'أكواد السنتر', icon: 'gift' },
     { id: 'courses', label: 'الكورسات', icon: 'book-open', count: courses.length },
     { id: 'lectures', label: 'المحاضرات', icon: 'video', count: lectures.length },
-    { id: 'students', label: 'الطلاب النشطين', icon: 'users', count: students.length },
-    { id: 'pending-students', label: 'طلبات الانضمام', icon: 'user-plus', badge: stats.pendingStudents }
+    { id: 'students', label: 'إدارة الطلاب', icon: 'users', count: students.length + pendingStudents.length }
   ];
 
   if (loading) {
@@ -555,7 +554,7 @@ export const AdminDashboard = () => {
 
           {activeTab === 'students' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold">👥 الطلاب المسجلين</h2>
+              <h2 className="text-2xl font-bold">👥 إدارة الطلاب</h2>
 
               <div className="glass-panel overflow-hidden">
                 <div className="overflow-x-auto">
@@ -563,21 +562,21 @@ export const AdminDashboard = () => {
                     <thead className="bg-white/5">
                       <tr>
                         <th className="p-4">الطالب</th>
-                        <th className="p-4">الصف</th>
-                        <th className="p-4">المحافظة</th>
+                        <th className="p-4">الصف والمدرسة</th>
+                        <th className="p-4">العنوان والسنتر</th>
                         <th className="p-4">الهاتف</th>
-                        <th className="p-4">الحالة</th>
-                        <th className="p-4">إجراءات</th>
+                        <th className="p-4 text-center">حالة الحساب</th>
+                        <th className="p-4 text-center">إجراءات</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {students.map((student) => (
+                      {[...pendingStudents, ...students].map((student) => (
                         <tr key={student.id} className="border-t border-white/5 hover:bg-white/5">
                           <td className="p-4">
                             <div className="flex items-center gap-3">
                               <img
-                                src={student.avatar_url || 'https://via.placeholder.com/40'}
-                                className="w-10 h-10 rounded-full"
+                                src={student.profilePictureUrl || student.avatar_url || 'https://via.placeholder.com/40'}
+                                className="w-10 h-10 rounded-full object-cover"
                                 alt={student.name}
                               />
                               <div>
@@ -587,92 +586,72 @@ export const AdminDashboard = () => {
                             </div>
                           </td>
                           <td className="p-4">
-                            {student.grade === '1sec' ? 'أولى ثانوي' :
-                             student.grade === '2sec' ? 'تانية ثانوي' : 'تالتة ثانوي'}
-                          </td>
-                          <td className="p-4">{student.governorate || '-'}</td>
-                          <td className="p-4">{student.phone}</td>
-                          <td className="p-4">
-                            <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
-                              نشط
-                            </span>
-                          </td>
-                          <td className="p-4">
-                              <button
-                                onClick={() => handleStudentApproval(student.id, 'rejected')}
-                                className="bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 rounded-lg text-sm transition"
-                              >
-                                حظر
-                              </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {students.length === 0 && (
-                          <tr><td colSpan="6" className="p-4 text-center text-slate-400">لا يوجد طلاب نشطين حالياً</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'pending-students' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold">👤 طلبات الانضمام (قيد الانتظار)</h2>
-
-              <div className="glass-panel overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-right">
-                    <thead className="bg-white/5">
-                      <tr>
-                        <th className="p-4">الطالب</th>
-                        <th className="p-4">الصف</th>
-                        <th className="p-4">المحافظة</th>
-                        <th className="p-4">الهاتف</th>
-                        <th className="p-4 flex gap-2 justify-end">إجراءات</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingStudents.map((student) => (
-                        <tr key={student.id} className="border-t border-white/5 hover:bg-white/5">
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={student.avatar_url || 'https://via.placeholder.com/40'}
-                                className="w-10 h-10 rounded-full"
-                                alt={student.name}
-                              />
-                              <div>
-                                <p className="font-bold">{student.name}</p>
-                                <p className="text-xs text-slate-400">{student.email}</p>
-                              </div>
+                            <div className="font-bold text-sm">
+                              {student.grade === '1sec' ? 'أولى ثانوي' :
+                               student.grade === '2sec' ? 'تانية ثانوي' : 'تالتة ثانوي'}
+                            </div>
+                            <div className="text-xs text-slate-400 max-w-[150px] truncate" title={student.school}>
+                              {student.school || 'بدون مدرسة'}
                             </div>
                           </td>
                           <td className="p-4">
-                            {student.grade === '1sec' ? 'أولى ثانوي' :
-                             student.grade === '2sec' ? 'تانية ثانوي' : 'تالتة ثانوي'}
+                            <div className="font-bold text-sm">{student.governorate || '-'}</div>
+                            <div className="text-xs text-brand-gold">{student.center || '-'}</div>
                           </td>
-                          <td className="p-4">{student.governorate || '-'}</td>
-                          <td className="p-4">{student.phone}</td>
-                          <td className="p-4 flex justify-end gap-2">
-                             <button
-                                onClick={() => handleStudentApproval(student.id, 'active')}
-                                className="bg-green-500/20 text-green-300 hover:bg-green-500 hover:text-white px-3 py-1 rounded-lg text-sm transition flex items-center gap-1"
-                              >
-                                <GlassIcon name="check" size={14} /> قبول
-                              </button>
-                              <button
-                                onClick={() => handleStudentApproval(student.id, 'rejected')}
-                                className="bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 rounded-lg text-sm transition flex items-center gap-1"
-                              >
-                                <GlassIcon name="x" size={14} /> رفض
-                              </button>
+                          <td className="p-4 font-mono text-sm">{student.phone}</td>
+                          <td className="p-4 text-center">
+                            {student.accountStatus === 'pending' ? (
+                              <span className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-xs font-bold font-mono">
+                                معلق
+                              </span>
+                            ) : student.accountStatus === 'banned' || student.accountStatus === 'suspended' ? (
+                              <span className="bg-red-500/20 text-red-300 px-3 py-1 rounded-full text-xs font-bold font-mono">
+                                محظور
+                              </span>
+                            ) : (
+                              <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-xs font-bold font-mono">
+                                نشط
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4 flex gap-2 justify-center">
+                              {student.accountStatus === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => handleStudentApproval(student.id, 'active')}
+                                    className="bg-green-500/20 text-green-300 hover:bg-green-500 hover:text-white px-3 py-1 rounded-lg text-sm transition font-bold"
+                                  >
+                                    تفعيل
+                                  </button>
+                                  <button
+                                    onClick={() => handleStudentApproval(student.id, 'banned')}
+                                    className="bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 rounded-lg text-sm transition font-bold"
+                                  >
+                                    رفض وحظر
+                                  </button>
+                                </>
+                              )}
+                              {student.accountStatus === 'active' && (
+                                <button
+                                  onClick={() => handleStudentApproval(student.id, 'banned')}
+                                  className="bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 rounded-lg text-sm transition font-bold"
+                                >
+                                  حظر
+                                </button>
+                              )}
+                              {(student.accountStatus === 'banned' || student.accountStatus === 'suspended') && (
+                                <button
+                                  onClick={() => handleStudentApproval(student.id, 'active')}
+                                  className="bg-green-500/20 text-green-300 hover:bg-green-500 hover:text-white px-3 py-1 rounded-lg text-sm transition font-bold"
+                                >
+                                  إزالة الحظر وتفعيل
+                                </button>
+                              )}
                           </td>
                         </tr>
                       ))}
-                      {pendingStudents.length === 0 && (
-                          <tr><td colSpan="5" className="p-4 text-center text-slate-400">لا يوجد طلبات انضمام جديدة</td></tr>
+                      {(students.length === 0 && pendingStudents.length === 0) && (
+                          <tr><td colSpan="6" className="p-8 text-center text-slate-400">لا يوجد طلاب مسجلين حالياً</td></tr>
                       )}
                     </tbody>
                   </table>

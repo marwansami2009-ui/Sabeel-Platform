@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GlassIcon } from '../common/GlassIcon';
-import { createPaymentRequest, validateCenterCode, useCenterCode } from '../../services/supabaseService';
+import { createPaymentRequest, validateCenterCode, useCenterCode } from '../../services/appwriteService';
 
 export const CoursePurchaseModal = ({ course, onClose, user, userData, onSuccess }) => {
   const [step, setStep] = useState(1); // 1: details, 2: payment methods, 3: code entry

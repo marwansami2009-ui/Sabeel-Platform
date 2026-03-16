@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import { createProfile, getProfile } from '../services/supabaseService';
+import { account } from '../appwriteConfig';
+import { ID } from 'appwrite';
+import { createProfile, getProfile, updateProfile as updateProfileInDb } from '../services/appwriteService';
 
 const AuthContext = createContext();
 
@@ -15,11 +16,10 @@ export const AuthProvider = ({ children }) => {
     // Check active sessions
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          setUser(session.user);
-          const userProfile = await getProfile(session.user.id);
+        const currentUser = await account.get();
+        if (currentUser) {
+          setUser(currentUser);
+          const userProfile = await getProfile(currentUser.$id);
           setProfile(userProfile);
         }
       } catch (error) {
@@ -30,23 +30,6 @@ export const AuthProvider = ({ children }) => {
     };
 
     getInitialSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event, session);
-      
-      if (session?.user) {
-        setUser(session.user);
-        const userProfile = await getProfile(session.user.id);
-        setProfile(userProfile);
-      } else {
-        setUser(null);
-        setProfile(null);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   // Sign Up with Email
@@ -55,42 +38,39 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const cleanPhone = phone.trim().replace(/\s/g, '');
       const dummyEmail = `${cleanPhone}@sabeel.com`;
+      const fullName = `${userData.firstName} ${userData.middleName} ${userData.lastName}`.trim();
       
       // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: dummyEmail,
+      const authData = await account.create(
+        ID.unique(),
+        dummyEmail,
         password,
-        options: {
-          data: {
-            name: userData.name,
-            phone: cleanPhone
-          }
-        }
+        fullName
+      );
+
+      // 2. Create profile in database
+      const { error: profileError } = await createProfile({
+        id: authData.$id,
+        email: dummyEmail,
+        name: fullName,
+        phone: cleanPhone,
+        birthdate: userData.birthdate,
+        gender: userData.gender,
+        governorate: userData.governorate,
+        center: userData.center,
+        school: userData.school || '',
+        bio: userData.bio || '',
+        grade: userData.grade || '',
+        role: 'student',
+        status: 'pending',
+        accountStatus: 'pending',
+        profilePictureUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + authData.$id,
+        avatar_url: userData.avatar_url || null
       });
 
-      if (authError) throw authError;
+      if (profileError) throw new Error(profileError);
 
-      if (authData.user) {
-        // 2. Create profile in database
-        const { error: profileError } = await createProfile({
-          id: authData.user.id,
-          email: dummyEmail,
-          name: userData.name,
-          phone: cleanPhone,
-          grade: userData.grade,
-          role: 'student',
-          status: 'pending',
-          avatar_url: userData.avatar_url || null
-        });
-
-        if (profileError) throw profileError;
-
-        // 3. Fetch the created profile
-        const newProfile = await getProfile(authData.user.id);
-        setProfile(newProfile);
-      }
-
-      return { success: true, user: authData.user };
+      return { success: true, user: authData };
     } catch (error) {
       console.error('Sign up error:', error);
       return { success: false, error: error.message };
@@ -105,20 +85,18 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const cleanPhone = phone.trim().replace(/\s/g, '');
       const dummyEmail = `${cleanPhone}@sabeel.com`;
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: dummyEmail,
-        password
-      });
-
-      if (error) throw error;
-
-      // Profile will be set by onAuthStateChange
-      // Fetch profile to check status immediately
-      const userProfile = await getProfile(data.user.id);
       
+      await account.createEmailPasswordSession(dummyEmail, password);
+      const currentUser = await account.get();
+
+      const userProfile = await getProfile(currentUser.$id);
+      
+      setUser(currentUser);
+      setProfile(userProfile);
+
       return { 
         success: true, 
-        user: data.user,
+        user: currentUser,
         profile: userProfile
       };
     } catch (error) {
@@ -129,13 +107,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-
   // Sign Out
   const signOut = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      await account.deleteSession('current');
       
       setUser(null);
       setProfile(null);
@@ -152,11 +128,11 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (email) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      });
+      await account.createRecovery(
+        email,
+        `${window.location.origin}/reset-password`
+      );
 
-      if (error) throw error;
       return { success: true };
     } catch (error) {
       console.error('Reset password error:', error);
@@ -171,12 +147,9 @@ export const AuthProvider = ({ children }) => {
     try {
       if (!user) throw new Error('No user logged in');
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
+      const { success, error } = await updateProfileInDb(user.$id, updates);
 
-      if (error) throw error;
+      if (!success) throw new Error(error);
 
       // Update local profile
       setProfile(prev => ({ ...prev, ...updates }));

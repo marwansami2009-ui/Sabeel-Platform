@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { GlassIcon } from '../../components/common/GlassIcon';
 import { ThemeToggle } from '../../components/common/ThemeToggle';
 import { CoursePurchaseModal } from '../../components/payment/CoursePurchaseModal';
 import { LecturePlayer } from '../../components/lectures/LecturePlayer';
-import { supabase } from '../../supabaseClient';
-import { validateCenterCode, useCenterCode, getCourses, getLectures } from '../../services/supabaseService';
+import { validateCenterCode, useCenterCode, getCourses, getLectures, getExams, getWhiteboards } from '../../services/appwriteService';
 
 export const StudentDashboard = () => {
-  const { user, userData, logout } = useAuth();
+  const { user, profile: userData, signOut: logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -56,11 +56,11 @@ export const StudentDashboard = () => {
           setLectures(lecturesRes.data);
         }
 
-        const { data: examsData } = await supabase.from('exams').select('*');
-        if (examsData) setExams(examsData);
+        const examsRes = await getExams();
+        if (examsRes.success) setExams(examsRes.data);
 
-        const { data: whiteboardsData } = await supabase.from('whiteboards').select('*');
-        if (whiteboardsData) setWhiteboards(whiteboardsData);
+        const whiteboardsRes = await getWhiteboards();
+        if (whiteboardsRes.success) setWhiteboards(whiteboardsRes.data);
       } catch (err) {
         console.error('Error fetching data:', err);
       }
@@ -143,6 +143,10 @@ export const StudentDashboard = () => {
     { id: 'store', label: 'متجر الكورسات', icon: 'shopping-cart', count: availableCourses.length }
   ];
 
+  if (userData?.accountStatus === 'banned' || userData?.accountStatus === 'suspended') {
+    return <Navigate to="/suspended" replace />;
+  }
+
   if (userData?.status === 'pending') {
     return (
       <div className={`min-h-screen flex items-center justify-center p-4 ${isDarkMode ? 'bg-brand-dark' : 'bg-slate-50'}`}>
@@ -190,8 +194,8 @@ export const StudentDashboard = () => {
         <div className="p-6 text-center border-b border-white/5">
           <div className="relative inline-block">
             <img
-              src={user?.photoURL || 'https://via.placeholder.com/100'}
-              className="w-24 h-24 rounded-full border-4 border-brand-red mx-auto mb-3"
+              src={userData?.profilePictureUrl || user?.photoURL || 'https://via.placeholder.com/100'}
+              className="w-24 h-24 rounded-full border-4 border-brand-red mx-auto mb-3 object-cover"
               alt={userData?.name}
             />
             <div className={`absolute bottom-2 right-0 w-5 h-5 rounded-full border-2 ${
@@ -199,12 +203,18 @@ export const StudentDashboard = () => {
             }`}></div>
           </div>
 
-          <h3 className="font-bold text-lg">{userData?.name}</h3>
+          <h3 className="font-bold text-lg">{userData?.name || user?.name || 'طالب مجهول'}</h3>
           <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
             {userData?.grade === '1sec' ? 'الصف الأول الثانوي' :
              userData?.grade === '2sec' ? 'الصف الثاني الثانوي' : 'الصف الثالث الثانوي'}
           </p>
           
+          {userData?.bio && (
+            <p className={`text-xs mt-3 italic px-2 line-clamp-2 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+              "{userData.bio}"
+            </p>
+          )}
+
           <div className="mt-3">
             <span className={`px-3 py-1 rounded-full text-xs font-bold text-white ${rank.class}`}>
               {rank.text}

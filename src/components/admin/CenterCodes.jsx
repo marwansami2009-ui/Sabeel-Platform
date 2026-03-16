@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
 import { GlassIcon } from '../common/GlassIcon';
-import { generateCenterCodes } from '../../services/supabaseService';
+import { generateCenterCodes, getCenterCodesList } from '../../services/appwriteService';
 
 export const CenterCodes = ({ courses }) => {
   const [codes, setCodes] = useState([]);
@@ -15,12 +14,9 @@ export const CenterCodes = ({ courses }) => {
   useEffect(() => {
     const fetchCodes = async () => {
       try {
-        const { data, error } = await supabase
-          .from('center_codes')
-          .select('*, courses:course_id(title)')
-          .order('created_at', { ascending: false });
+        const { success, data } = await getCenterCodesList();
           
-        if (!error && data) {
+        if (success && data) {
           const formattedCodes = data.map(item => ({
             code: item.code,
             courseName: item.courses?.title || 'غير معروف',

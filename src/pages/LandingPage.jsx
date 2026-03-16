@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { GlassIcon } from '../components/common/GlassIcon';
 import { ThemeToggle } from '../components/common/ThemeToggle';
-import { getCourses } from '../services/supabaseService';
-import { supabase } from '../supabaseClient';
+import { getCourses, getProfiles } from '../services/appwriteService';
 
 export const LandingPage = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -26,12 +25,9 @@ export const LandingPage = () => {
     // Load top students for honor board
     const fetchTopStudents = async () => {
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('role', 'student');
+        const { success, data } = await getProfiles('student');
           
-        if (data) {
+        if (success && data) {
           const students = data
             .map(s => ({
               ...s,

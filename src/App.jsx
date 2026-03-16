@@ -6,6 +6,7 @@ import { CompleteProfile } from './pages/auth/CompleteProfile';
 import { StudentDashboard } from './pages/student/StudentDashboard';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { LandingPage } from './pages/LandingPage';
+import { SuspendedAccount } from './pages/auth/SuspendedAccount';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = ['student', 'admin', 'boss'] }) => {
@@ -89,6 +90,12 @@ const AppContent = () => {
         <Route path="/complete-profile" element={
           <ProtectedRoute allowedRoles={['student', 'admin', 'boss']}>
             <CompleteProfile />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/suspended" element={
+          <ProtectedRoute allowedRoles={['student', 'admin', 'boss']}>
+            <SuspendedAccount />
           </ProtectedRoute>
         } />
 

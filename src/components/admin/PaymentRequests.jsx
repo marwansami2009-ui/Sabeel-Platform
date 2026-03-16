@@ -3,7 +3,7 @@ import { GlassIcon } from '../common/GlassIcon';
 import { 
   getPaymentRequests, 
   updatePaymentRequest 
-} from '../../services/supabaseService';
+} from '../../services/appwriteService';
 
 export const PaymentRequests = () => {
   const [requests, setRequests] = useState([]);
