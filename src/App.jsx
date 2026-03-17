@@ -23,22 +23,22 @@ const ProtectedRoute = ({ children, allowedRoles = ['student', 'admin', 'boss'] 
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" />;
+  if (!user || !profile) {
+    return <Navigate to="/login" replace />;
   }
 
-  if (!profile?.is_profile_complete) {
-    return <Navigate to="/complete-profile" />;
+  // Block pending accounts from accessing protected routes
+  if (profile.accountStatus === 'pending') {
+    return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(profile?.role)) {
-    return <Navigate to="/" />;
+  if (!allowedRoles.includes(profile.role)) {
+    return <Navigate to="/" replace />;
   }
 
   return children;
 };
-
-// Public Route Component (redirects to dashboard if already logged in)
+// Public Route Component (redirects to dashboard if already logged in AND active)
 const PublicRoute = ({ children }) => {
   const { user, profile, loading } = useAuth();
 
@@ -53,11 +53,12 @@ const PublicRoute = ({ children }) => {
     );
   }
 
-  if (user && profile?.is_profile_complete) {
+  // Only redirect if user is logged in AND has an active account
+  if (user && profile && profile.accountStatus === 'active') {
     if (profile.role === 'admin' || profile.role === 'boss') {
-      return <Navigate to="/admin" />;
+      return <Navigate to="/admin" replace />;
     }
-    return <Navigate to="/student" />;
+    return <Navigate to="/student" replace />;
   }
 
   return children;

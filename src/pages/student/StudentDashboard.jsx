@@ -1,3 +1,4 @@
+// StudentDashboard.jsx - النسخة الكاملة مع جميع الميزات
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -5,17 +6,30 @@ import { GlassIcon } from '../../components/common/GlassIcon';
 import { ThemeToggle } from '../../components/common/ThemeToggle';
 import { CoursePurchaseModal } from '../../components/payment/CoursePurchaseModal';
 import { LecturePlayer } from '../../components/lectures/LecturePlayer';
-import { validateCenterCode, useCenterCode, getCourses, getLectures, getExams, getWhiteboards } from '../../services/appwriteService';
+import { QuizPlayer } from '../../components/quizzes/QuizPlayer';
+import { 
+  validateCenterCode, 
+  useCenterCode, 
+  getEnrolledCourses, 
+  getSuggestedCourses, 
+  getLectures, 
+  getExams, 
+  getWrongAnswers, 
+  deleteWrongAnswer,
+  submitAssignment,
+  getCompletedLectures 
+} from '../../services/appwriteService';
 
 export const StudentDashboard = () => {
   const { user, profile: userData, signOut: logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [courses, setCourses] = useState([]);
+  const [myCourses, setMyCourses] = useState([]);
+  const [suggestedCourses, setSuggestedCourses] = useState([]);
   const [lectures, setLectures] = useState([]);
   const [exams, setExams] = useState([]);
-  const [whiteboards, setWhiteboards] = useState([]);
+  const [wrongAnswers, setWrongAnswers] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedLecture, setSelectedLecture] = useState(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
@@ -24,31 +38,42 @@ export const StudentDashboard = () => {
   const [codeError, setCodeError] = useState('');
   const [codeSuccess, setCodeSuccess] = useState('');
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-
-  // Get user's enrolled courses
-  const enrolledCourses = userData?.enrolledCourses || [];
+  const [dataLoading, setDataLoading] = useState(true);
   
-  // Filter courses that user is enrolled in
-  const myCourses = courses.filter(c => enrolledCourses.includes(c.id));
-  
-  // Available courses for purchase
-  const availableCourses = courses.filter(c => !enrolledCourses.includes(c.id));
+  // ===== الميزات الجديدة =====
+  const [completedLectures, setCompletedLectures] = useState([]);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [currentQuiz, setCurrentQuiz] = useState(null);
+  const [lectureAssignments, setLectureAssignments] = useState({});
 
-  // Filter lectures based on enrolled courses
-  const availableLectures = lectures.filter(lec => 
-    lec.isFree || enrolledCourses.includes(lec.courseId)
+  // Enrolled course IDs for lecture filtering
+  const enrolledCourseIds = myCourses.map(c => c.id);
+
+  // Filter lectures to only show from enrolled courses (or free ones)
+  const availableLectures = lectures.filter(lec =>
+    lec.is_free || lec.isFree || enrolledCourseIds.includes(lec.course_id)
   );
 
   useEffect(() => {
     document.body.classList.toggle('light-mode', !isDarkMode);
   }, [isDarkMode]);
 
+  // ===== تحميل البيانات مع الميزات الجديدة =====
   useEffect(() => {
+    if (!user) return;
     const fetchData = async () => {
+      setDataLoading(true);
       try {
-        const coursesRes = await getCourses();
-        if (coursesRes.success && coursesRes.data) {
-          setCourses(coursesRes.data);
+        // Fetch enrolled courses
+        const enrolledRes = await getEnrolledCourses(user.$id);
+        if (enrolledRes.success && enrolledRes.data) {
+          setMyCourses(enrolledRes.data);
+        }
+
+        // If no enrolled courses, fetch suggestions
+        if (!enrolledRes.data || enrolledRes.data.length === 0) {
+          const suggestedRes = await getSuggestedCourses(userData?.grade || null);
+          if (suggestedRes.success) setSuggestedCourses(suggestedRes.data);
         }
 
         const lecturesRes = await getLectures();
@@ -59,23 +84,41 @@ export const StudentDashboard = () => {
         const examsRes = await getExams();
         if (examsRes.success) setExams(examsRes.data);
 
-        const whiteboardsRes = await getWhiteboards();
-        if (whiteboardsRes.success) setWhiteboards(whiteboardsRes.data);
+        if (user?.$id) {
+          const wrongAnswersRes = await getWrongAnswers(user.$id);
+          if (wrongAnswersRes.success) setWrongAnswers(wrongAnswersRes.data || []);
+          
+          // ===== تحميل المحاضرات المكتملة =====
+          const completedRes = await getCompletedLectures(user.$id);
+          if (completedRes.success) {
+            setCompletedLectures(completedRes.data.map(l => l.lecture_id));
+          }
+        }
       } catch (err) {
         console.error('Error fetching data:', err);
+      } finally {
+        setDataLoading(false);
       }
     };
 
     fetchData();
+  }, [user]);
 
-    return () => {
-      // Cleanup if using realtime subscriptions later
-    };
-  }, []);
+  // Tab change effect to specifically reload wrong mistakes
+  useEffect(() => {
+    if (activeTab === 'mistakes' && user?.$id) {
+      const fetchMistakes = async () => {
+        const wrongAnswersRes = await getWrongAnswers(user.$id);
+        if (wrongAnswersRes.success) setWrongAnswers(wrongAnswersRes.data || []);
+      };
+      fetchMistakes();
+    }
+  }, [activeTab, user]);
 
+  // ===== حساب الإحصائيات =====
   const calculateStats = () => {
     const totalLectures = availableLectures.length;
-    const watchedLectures = userData?.watchedLectures?.length || 0;
+    const watchedLectures = completedLectures.length || userData?.watchedLectures?.length || 0;
     const attendanceRate = userData?.attendanceRate || 0;
     const points = userData?.points || 0;
 
@@ -89,6 +132,49 @@ export const StudentDashboard = () => {
   };
 
   const stats = calculateStats();
+
+  // ===== التحقق من قفل المحاضرة (تم إلغاء القيود) =====
+  const isLectureLocked = (lecture, index, lecturesList) => {
+    return false; // بناءً على طلبك تم رفع القيود تماماً
+  };
+
+  // ===== تسليم الواجب =====
+  const handleSubmitAssignment = async (lectureId) => {
+    const res = await submitAssignment(user.$id, lectureId);
+    if (res.success) {
+      setCompletedLectures(prev => [...prev, lectureId]);
+      // تحديث واجهة المستخدم
+      alert('✅ تم تسليم الواجب بنجاح!');
+    } else {
+      alert(res.error || 'حدث خطأ أثناء تسليم الواجب');
+    }
+  };
+
+  // ===== مكون الرابط الخارجي =====
+  const ExternalLinkButton = ({ url }) => (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="glass-panel p-5 flex items-center justify-between group hover:border-brand-gold/50 transition-all cursor-pointer mb-4"
+      style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(12px)' }}
+    >
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </div>
+        <div>
+          <h4 className="text-white font-bold text-lg">رابط خارجي</h4>
+          <p className="text-slate-400 text-sm">اضغط لفتح الرابط في صفحة جديدة</p>
+        </div>
+      </div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400 group-hover:text-brand-gold transition">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </a>
+  );
 
   const handleCodeSubmit = async () => {
     if (!centerCode.trim()) {
@@ -117,6 +203,8 @@ export const StudentDashboard = () => {
       setTimeout(() => {
         setShowCodeModal(false);
         setCodeSuccess('');
+        // Refresh data
+        window.location.reload();
       }, 3000);
     } else {
       setCodeError(useResult.message);
@@ -139,15 +227,19 @@ export const StudentDashboard = () => {
     { id: 'mycourses', label: 'كورساتي', icon: 'book-open', count: myCourses.length },
     { id: 'lectures', label: 'المحاضرات', icon: 'video', count: availableLectures.length },
     { id: 'exams', label: 'الامتحانات', icon: 'clipboard-list' },
-    { id: 'whiteboards', label: 'السبورات', icon: 'file-text' },
-    { id: 'store', label: 'متجر الكورسات', icon: 'shopping-cart', count: availableCourses.length }
+    { id: 'mistakes', label: 'صحح أخطاءك', icon: 'refresh-cw', count: wrongAnswers.length },
+    { id: 'store', label: 'متجر الكورسات', icon: 'shopping-cart', count: suggestedCourses.length }
   ];
 
-  if (userData?.accountStatus === 'banned' || userData?.accountStatus === 'suspended') {
+  if (!user || !userData) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (userData.accountStatus === 'banned' || userData.accountStatus === 'suspended') {
     return <Navigate to="/suspended" replace />;
   }
 
-  if (userData?.status === 'pending') {
+  if (userData?.accountStatus === 'pending') {
     return (
       <div className={`min-h-screen flex items-center justify-center p-4 ${isDarkMode ? 'bg-brand-dark' : 'bg-slate-50'}`}>
         <div className="glass-panel p-8 max-w-md w-full text-center animate-scale-in">
@@ -420,7 +512,7 @@ export const StudentDashboard = () => {
                         </div>
                         <div className="flex-1">
                           <h4 className="font-bold">{course.title}</h4>
-                          <p className="text-xs text-slate-400">{course.duration} يوم</p>
+                          <p className="text-xs text-slate-400">{course.duration_days || course.duration} يوم</p>
                         </div>
                       </div>
                     ))}
@@ -492,10 +584,64 @@ export const StudentDashboard = () => {
                     <GlassIcon name="arrow-right" size={18} />
                     العودة للمحاضرات
                   </button>
+                  
+                  {/* الرابط الخارجي */}
+                  {selectedLecture.external_link && (
+                    <ExternalLinkButton url={selectedLecture.external_link} />
+                  )}
+
                   <LecturePlayer
                     lecture={selectedLecture}
-                    userEnrolledCourses={enrolledCourses}
+                    userEnrolledCourses={myCourses ?? []}
+                    isLoading={dataLoading}
+                    studentPhone={userData?.phone || ''}
+                    isLocked={isLectureLocked(selectedLecture, availableLectures.indexOf(selectedLecture), availableLectures)}
                   />
+
+                  {/* ── Smart Navigation & Homework ── */}
+                  <div className="mt-6 flex flex-col md:flex-row gap-4 items-center justify-between glass-panel p-4 border-t border-white/5">
+                    {/* Homework Button (بابل شيت - مفتاح) */}
+                    {(selectedLecture.quiz_id || selectedLecture.homework_url) ? (
+                      <button
+                        onClick={() => {
+                          if(selectedLecture.quiz_id) {
+                            const quiz = exams.find(e => e.id === selectedLecture.quiz_id);
+                            setCurrentQuiz(quiz || { id: selectedLecture.quiz_id });
+                            setShowQuiz(true);
+                          } else {
+                            window.open(selectedLecture.homework_url, '_blank');
+                            handleSubmitAssignment(selectedLecture.id);
+                          }
+                        }}
+                        className="w-full md:w-auto py-3 px-6 bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
+                      >
+                        <span className="text-xl">🔑</span>
+                        واجب الحصة
+                      </button>
+                    ) : (
+                      <div className="text-slate-500 text-sm">لا يوجد واجب لهذه المحاضرة</div>
+                    )}
+
+                    {/* Next Lecture Button */}
+                    {(() => {
+                      const currentIndex = availableLectures.findIndex(l => l.id === selectedLecture.id);
+                      if (currentIndex < availableLectures.length - 1) {
+                        const nextLec = availableLectures[currentIndex + 1];
+                        return (
+                          <button
+                            onClick={() => {
+                              setSelectedLecture(nextLec);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="w-full md:w-auto py-3 px-6 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
+                          >
+                            {(selectedLecture.quiz_id || selectedLecture.homework_url) ? 'حل الواجب والانتقال ←' : 'الانتقال للمحاضرة التالية ←'}
+                          </button>
+                        );
+                      }
+                      return <div className="text-slate-500 text-sm">نهاية الكورس</div>;
+                    })()}
+                  </div>
                 </div>
               ) : (
                 <>
@@ -509,34 +655,113 @@ export const StudentDashboard = () => {
                     </div>
                   ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {availableLectures.map((lecture) => (
-                        <div
-                          key={lecture.id}
-                          onClick={() => setSelectedLecture(lecture)}
-                          className="glass-panel overflow-hidden cursor-pointer group hover:border-brand-red/50 transition"
-                        >
-                          <div className="h-40 bg-gradient-to-br from-slate-800 to-slate-900 relative flex items-center justify-center">
-                            <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition"></div>
-                            <GlassIcon
-                              name="play-circle"
-                              size={48}
-                              className="text-white opacity-70 group-hover:opacity-100 group-hover:scale-110 transition"
-                            />
-                            {lecture.isFree && (
-                              <span className="absolute top-4 right-4 bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
-                                مجاني
-                              </span>
+                      {availableLectures.map((lecture, idx) => {
+                        const locked = isLectureLocked(lecture, idx, availableLectures);
+                        return (
+                          <div key={lecture.id} className="relative">
+                            {locked && (
+                              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 rounded-2xl flex items-center justify-center">
+                                <div className="text-center">
+                                  <GlassIcon name="lock" size={32} className="text-red-500 mx-auto mb-2" />
+                                  <p className="text-sm font-bold">أكمل المحاضرة السابقة أولاً</p>
+                                </div>
+                              </div>
                             )}
+                            <div
+                              onClick={() => !locked && setSelectedLecture(lecture)}
+                              className={`glass-panel overflow-hidden cursor-pointer group hover:border-brand-red/50 transition ${locked ? 'opacity-50' : ''}`}
+                            >
+                              <div className="h-40 bg-gradient-to-br from-slate-800 to-slate-900 relative flex items-center justify-center">
+                                <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition"></div>
+                                <GlassIcon
+                                  name={locked ? "lock" : "play-circle"}
+                                  size={48}
+                                  className="text-white opacity-70 group-hover:opacity-100 group-hover:scale-110 transition"
+                                />
+                                {lecture.is_free && (
+                                  <span className="absolute top-4 right-4 bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                    مجاني
+                                  </span>
+                                )}
+                              </div>
+                              <div className="p-4">
+                                <h3 className="font-bold mb-2">{lecture.title}</h3>
+                                <p className="text-xs text-slate-400 line-clamp-2">{lecture.description}</p>
+                              </div>
+                            </div>
                           </div>
-                          <div className="p-4">
-                            <h3 className="font-bold mb-2">{lecture.title}</h3>
-                            <p className="text-xs text-slate-400 line-clamp-2">{lecture.description}</p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </>
+              )}
+            </div>
+          )}
+
+          {/* ═══ MISTAKES CORRECTION TAB ═══ */}
+          {activeTab === 'mistakes' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center">
+                  <GlassIcon name="refresh-cw" size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">صحح أخطاءك</h2>
+                  <p className="text-slate-400 text-sm">راجع الأسئلة التي أخطأت فيها لتثبيت المعلومات</p>
+                </div>
+              </div>
+
+              {wrongAnswers.length === 0 ? (
+                <div className="glass-panel p-12 text-center text-emerald-400">
+                  <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <GlassIcon name="check-circle" size={40} className="text-emerald-500" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">عمل رائع! مفيش أخطاء مسجلة ليك</h3>
+                  <p className="opacity-80">استمر في التفوق</p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {wrongAnswers.map(wa => (
+                    <div key={wa.id} className="glass-panel p-6 border-t-2 border-brand-red">
+                      <p className="text-lg font-bold text-white mb-6 leading-relaxed bg-white/5 p-4 rounded-xl">
+                        {wa.question_text}
+                      </p>
+                      
+                      <div className="space-y-3 mb-6">
+                        {['a', 'b', 'c', 'd'].map(optKey => {
+                          const isCorrect = wa.correct_answer === optKey;
+                          const isUserAnswer = wa.user_answer === optKey;
+                          
+                          if (!wa[`option_${optKey}`]) return null;
+
+                          let btnClass = "w-full p-3 rounded-lg border text-right font-bold transition flex justify-between items-center ";
+                          if (isCorrect) btnClass += "bg-emerald-500/20 border-emerald-500/50 text-emerald-300";
+                          else if (isUserAnswer) btnClass += "bg-red-500/20 border-red-500/50 text-red-300 opacity-60 line-through";
+                          else btnClass += "bg-white/5 border-white/10 text-slate-400 opacity-50";
+
+                          return (
+                            <div key={optKey} className={btnClass}>
+                              <span>{wa[`option_${optKey}`]}</span>
+                              {isCorrect && <span className="text-xl">✓ الصحيح</span>}
+                              {isUserAnswer && !isCorrect && <span className="text-xs">إجابتك ✗</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <button 
+                        onClick={async () => {
+                          const res = await deleteWrongAnswer(wa.id);
+                          if (res.success) setWrongAnswers(prev => prev.filter(w => w.id !== wa.id));
+                        }}
+                        className="w-full py-3 bg-brand-red/20 hover:bg-brand-red text-white font-bold rounded-xl transition flex justify-center items-center gap-2"
+                      >
+                        <GlassIcon name="check" size={18} /> تم مراجعة السؤال
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -545,7 +770,7 @@ export const StudentDashboard = () => {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold">🛒 متجر الكورسات</h2>
               
-              {availableCourses.length === 0 ? (
+              {suggestedCourses.length === 0 ? (
                 <div className="glass-panel p-12 text-center">
                   <GlassIcon name="check-circle" size={48} className="mx-auto mb-4 text-green-500" />
                   <h3 className="text-xl font-bold mb-2">أنت مشترك في جميع الكورسات!</h3>
@@ -553,7 +778,7 @@ export const StudentDashboard = () => {
                 </div>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {availableCourses.map((course) => (
+                  {suggestedCourses.map((course) => (
                     <div
                       key={course.id}
                       className="glass-panel overflow-hidden group cursor-pointer hover:scale-105 transition"
@@ -577,7 +802,7 @@ export const StudentDashboard = () => {
                         <div className="flex items-center justify-between">
                           <span className="text-xs flex items-center gap-1 text-slate-400">
                             <GlassIcon name="clock" size={12} />
-                            {course.duration} يوم
+                            {course.duration_days || course.duration} يوم
                           </span>
                           <button className="text-brand-red hover:text-brand-gold text-sm font-bold">
                             اشترك الآن ←
@@ -644,6 +869,24 @@ export const StudentDashboard = () => {
         </div>
       )}
 
+      {/* Quiz Modal */}
+      {showQuiz && currentQuiz && (
+        <QuizPlayer
+          quiz={currentQuiz}
+          userId={user.$id}
+          onClose={() => setShowQuiz(false)}
+          onComplete={() => {
+            setShowQuiz(false);
+            // Refresh wrong answers
+            if (user?.$id) {
+              getWrongAnswers(user.$id).then(res => {
+                if (res.success) setWrongAnswers(res.data || []);
+              });
+            }
+          }}
+        />
+      )}
+
       {/* Purchase Modal */}
       {showPurchaseModal && selectedCourse && (
         <CoursePurchaseModal
@@ -658,6 +901,7 @@ export const StudentDashboard = () => {
             setShowPurchaseModal(false);
             setSelectedCourse(null);
             // Refresh data
+            window.location.reload();
           }}
         />
       )}

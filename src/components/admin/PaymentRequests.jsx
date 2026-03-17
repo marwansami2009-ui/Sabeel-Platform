@@ -19,16 +19,16 @@ export const PaymentRequests = () => {
     const response = await getPaymentRequests(filter);
     if (response.success && response.data) {
       const formatted = response.data.map(req => ({
-        id: req.id,
-        userId: req.user_id,
-        userName: req.profiles?.name || 'غير معروف',
+        id: req.id || req.requestId,
+        userId: req.payerId || req.user_id,
+        userName: req.profiles?.firstName || req.profiles?.name || 'غير معروف',
         userPhone: req.profiles?.phone || '',
         courseId: req.course_id,
         courseName: req.courses?.title || '',
-        coursePrice: req.courses?.price || 0,
+        coursePrice: req.amount || req.courses?.price || 0,
         receiptImage: req.receipt_image,
-        status: req.status,
-        createdAt: new Date(req.created_at).getTime()
+        status: req.requestStatus,
+        createdAt: new Date(req.requestDate).getTime()
       }));
       setRequests(formatted);
     } else {
@@ -39,14 +39,14 @@ export const PaymentRequests = () => {
 
   const handleApprove = async (request) => {
     if (confirm(`تأكيد الموافقة على طلب ${request.userName}؟`)) {
-      await updatePaymentRequest(request.id, { status: 'approved' });
+      await updatePaymentRequest(request.id, { requestStatus: 'approved' });
       loadRequests();
     }
   };
 
   const handleReject = async (requestId) => {
     if (confirm('تأكيد رفض الطلب؟')) {
-      await updatePaymentRequest(requestId, { status: 'rejected' });
+      await updatePaymentRequest(requestId, { requestStatus: 'rejected' });
       loadRequests();
     }
   };

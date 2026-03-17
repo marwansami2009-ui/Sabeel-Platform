@@ -1,77 +1,147 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
-@import 'plyr/dist/plyr.css';
-
+/* index.css - التصميم الموحد */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #171717;
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --grid-color: rgba(255, 255, 255, 0.04);
-  --glow-color: rgba(228, 228, 231, 0.12);
-  --plyr-color-main: #8b0000;
-  --plyr-control-toggle-checked-background: #d4af37;
+@layer base {
+  body {
+    @apply font-sans antialiased;
+    direction: rtl;
+  }
 }
 
-.light-mode {
-  --bg-primary: #fafafa;
-  --bg-secondary: #f4f4f5;
-  --text-primary: #0a0a0a;
-  --text-secondary: #52525b;
-  --grid-color: rgba(0, 0, 0, 0.06);
-  --glow-color: rgba(161, 161, 170, 0.15);
+@layer components {
+  /* Glassmorphism */
+  .glass-panel {
+    @apply backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl shadow-xl;
+  }
+
+  .glass-card {
+    @apply backdrop-blur-lg bg-gradient-to-br from-white/10 to-white/5 border border-white/10 rounded-xl shadow-lg;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-800 hover:to-purple-950 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/10;
+  }
+
+  .btn-secondary {
+    @apply bg-gradient-to-r from-red-800 to-red-900 hover:from-red-900 hover:to-red-950 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg;
+  }
+
+  .btn-gold {
+    @apply bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-700 hover:to-amber-800 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg;
+  }
+
+  .btn-main {
+    @apply bg-gradient-to-r from-brand-red to-brand-gold hover:from-brand-red/90 hover:to-brand-gold/90 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg;
+  }
+
+  /* Legacy class support */
+  .bg-brand-dark {
+    @apply bg-purple-950;
+  }
+
+  .bg-brand-card {
+    @apply bg-purple-900/30 backdrop-blur-xl border border-purple-700/30;
+  }
+
+  .text-brand-red {
+    @apply text-red-600;
+  }
+
+  .bg-brand-red {
+    @apply bg-red-700;
+  }
+
+  .text-brand-gold {
+    @apply text-amber-400;
+  }
+
+  .bg-brand-gold {
+    @apply bg-amber-500;
+  }
+
+  /* Animations */
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-white/5;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/20 rounded-full hover:bg-white/30 transition;
+  }
 }
 
-* {
-  box-sizing: border-box;
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-body {
-  font-family: 'Cairo', sans-serif;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  overflow-x: hidden;
-  margin: 0;
-  transition: all 0.3s ease;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-.glass-panel {
-  background: rgba(23, 23, 23, 0.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-  border-radius: 16px;
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
+/* Light mode support */
 .light-mode .glass-panel {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  @apply bg-white/70 border-white/20;
 }
 
-.glass-icon {
-  background: linear-gradient(135deg, rgba(161, 161, 170, 0.25) 0%, rgba(82, 82, 91, 0.15) 100%);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(228, 228, 231, 0.3);
-  border-radius: 12px;
-  padding: 10px;
-  box-shadow: 0 0 20px rgba(161, 161, 170, 0.2);
-  transition: all 0.3s ease;
+.light-mode .glass-card {
+  @apply bg-white/80 border-white/30;
 }
 
-.btn-main {
-  background: linear-gradient(135deg, #e4e4e7 0%, #a1a1aa 100%);
-  color: #0a0a0a;
-  font-weight: 800;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(228, 228, 231, 0.25);
+.light-mode .bg-brand-dark {
+  @apply bg-slate-100;
 }
 
-.math-grid {
-  background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-  background-size: 30px 30px;
+.light-mode .bg-brand-card {
+  @apply bg-white/90 border-slate-200;
+}
+
+.light-mode .text-brand-red {
+  @apply text-red-600;
+}
+
+.light-mode .text-brand-gold {
+  @apply text-amber-600;
 }
